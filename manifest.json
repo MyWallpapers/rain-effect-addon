@@ -1,0 +1,202 @@
+{
+  "name": "Rain Effect",
+  "version": "1.0.0",
+  "sdkVersion": "2.13.0",
+  "description": "Beautiful WebGL rain effect with realistic droplets, splashes, and customizable atmosphere",
+  "author": "MyWallpaper Team",
+  "license": "MIT",
+  "keywords": ["rain", "weather", "effect", "webgl", "ambient", "relaxing"],
+  "categories": ["effects", "weather", "ambient"],
+  "capabilities": {
+    "hotReload": true,
+    "systemEvents": ["viewport:resize", "theme:change"]
+  },
+  "settings": {
+    "rainSection": {
+      "type": "section",
+      "label": "Rain Settings"
+    },
+    "rainColor": {
+      "type": "color",
+      "label": "Rain Color",
+      "description": "Color of the raindrops",
+      "default": "#a8c8e8"
+    },
+    "rainIntensity": {
+      "type": "range",
+      "label": "Rain Intensity",
+      "description": "Number of raindrops (affects performance)",
+      "min": 100,
+      "max": 2000,
+      "step": 50,
+      "default": 800
+    },
+    "rainSpeed": {
+      "type": "range",
+      "label": "Fall Speed",
+      "description": "How fast the rain falls",
+      "min": 0.5,
+      "max": 3,
+      "step": 0.1,
+      "default": 1.2
+    },
+    "dropLength": {
+      "type": "range",
+      "label": "Drop Length",
+      "description": "Length of rain streaks",
+      "min": 5,
+      "max": 50,
+      "step": 1,
+      "default": 20
+    },
+    "dropWidth": {
+      "type": "range",
+      "label": "Drop Width",
+      "description": "Thickness of raindrops",
+      "min": 0.5,
+      "max": 4,
+      "step": 0.1,
+      "default": 1.5
+    },
+    "windSection": {
+      "type": "section",
+      "label": "Wind & Direction"
+    },
+    "windAngle": {
+      "type": "range",
+      "label": "Wind Angle",
+      "description": "Angle of rain (-45 to 45 degrees)",
+      "min": -45,
+      "max": 45,
+      "step": 1,
+      "default": 10
+    },
+    "windVariation": {
+      "type": "range",
+      "label": "Wind Variation",
+      "description": "Random variation in wind",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "default": 5
+    },
+    "effectsSection": {
+      "type": "section",
+      "label": "Visual Effects"
+    },
+    "enableSplash": {
+      "type": "boolean",
+      "label": "Enable Splash Effect",
+      "description": "Show splash particles when drops hit the ground",
+      "default": true
+    },
+    "splashIntensity": {
+      "type": "range",
+      "label": "Splash Intensity",
+      "description": "Size and visibility of splashes",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1
+    },
+    "enableGlow": {
+      "type": "boolean",
+      "label": "Enable Glow",
+      "description": "Add a soft glow effect to raindrops",
+      "default": true
+    },
+    "glowIntensity": {
+      "type": "range",
+      "label": "Glow Intensity",
+      "description": "Brightness of the glow effect",
+      "min": 0.1,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.3
+    },
+    "enableMist": {
+      "type": "boolean",
+      "label": "Enable Mist",
+      "description": "Add atmospheric mist/fog effect",
+      "default": true
+    },
+    "mistDensity": {
+      "type": "range",
+      "label": "Mist Density",
+      "description": "Thickness of the mist layer",
+      "min": 0,
+      "max": 0.5,
+      "step": 0.01,
+      "default": 0.15
+    },
+    "backgroundSection": {
+      "type": "section",
+      "label": "Background"
+    },
+    "backgroundColor": {
+      "type": "color",
+      "label": "Background Color",
+      "description": "Base background color",
+      "default": "#0a0a1a"
+    },
+    "backgroundOpacity": {
+      "type": "range",
+      "label": "Background Opacity",
+      "description": "Transparency of background (0 = fully transparent)",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.85
+    },
+    "enableGradient": {
+      "type": "boolean",
+      "label": "Enable Gradient",
+      "description": "Use gradient background instead of solid color",
+      "default": true
+    },
+    "gradientTopColor": {
+      "type": "color",
+      "label": "Gradient Top",
+      "description": "Top color of the background gradient",
+      "default": "#1a1a2e"
+    },
+    "gradientBottomColor": {
+      "type": "color",
+      "label": "Gradient Bottom",
+      "description": "Bottom color of the background gradient",
+      "default": "#0f0f1a"
+    },
+    "advancedSection": {
+      "type": "section",
+      "label": "Advanced"
+    },
+    "depthLayers": {
+      "type": "range",
+      "label": "Depth Layers",
+      "description": "Number of parallax depth layers (affects 3D feel)",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "default": 3
+    },
+    "motionBlur": {
+      "type": "range",
+      "label": "Motion Blur",
+      "description": "Trail effect behind raindrops",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.4
+    },
+    "resetButton": {
+      "type": "button",
+      "buttonLabel": "Reset to Defaults"
+    }
+  },
+  "defaultLayout": {
+    "xPercent": 0,
+    "yPercent": 0,
+    "widthPercent": 100,
+    "heightPercent": 100
+  }
+}

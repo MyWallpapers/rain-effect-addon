@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rain Effect</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      background: transparent;
+    }
+
+    #canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #mist-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(100, 120, 140, 0.1) 0%,
+        rgba(80, 100, 120, 0.2) 50%,
+        rgba(60, 80, 100, 0.15) 100%
+      );
+      animation: mistPulse 8s ease-in-out infinite;
+    }
+
+    @keyframes mistPulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="mist-layer"></div>
+
+  <script>
+    // ==========================================================================
+    // Rain Effect Addon - Beautiful WebGL Rain Simulation
+    // ==========================================================================
+
+    (function() {
+      'use strict';
+
+      const api = window.MyWallpaper;
+      const canvas = document.getElementById('canvas');
+      const mistLayer = document.getElementById('mist-layer');
+      const ctx = canvas.getContext('2d');
+
+      // State
+      let drops = [];
+      let splashes = [];
+      let animationId = null;
+      let isPaused = false;
+      let lastTime = 0;
+      let settings = {};
+
+      // Performance optimization
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      // ==========================================================================
+      // UTILITY FUNCTIONS
+      // ==========================================================================
+
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : { r: 168, g: 200, b: 232 };
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function random(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      // ==========================================================================
+      // RAINDROP CLASS
+      // ==========================================================================
+
+      class Raindrop {
+        constructor(layer) {
+          this.layer = layer;
+          this.reset();
+        }
+
+        reset() {
+          const layerFactor = 1 - (this.layer / settings.depthLayers) * 0.6;
+
+          // Position
+          this.x = random(-50, canvas.width + 50);
+          this.y = random(-100, -20);
+
+          // Size based on layer (closer = larger)
+          this.length = settings.dropLength * layerFactor * random(0.7, 1.3);
+          this.width = settings.dropWidth * layerFactor * random(0.8, 1.2);
+
+          // Speed based on layer (closer = faster)
+          this.speed = settings.rainSpeed * layerFactor * random(0.8, 1.2) * 15;
+
+          // Wind effect
+          const windRad = (settings.windAngle + random(-settings.windVariation, settings.windVariation)) * Math.PI / 180;
+          this.windX = Math.tan(windRad) * this.speed;
+
+          // Opacity based on layer
+          this.opacity = layerFactor * random(0.4, 0.9);
+
+          // Glow
+          this.glowSize = this.width * 3 * settings.glowIntensity;
+        }
+
+        update(deltaTime) {
+          const dt = deltaTime * 0.06;
+
+          this.y += this.speed * dt;
+          this.x += this.windX * dt;
+
+          // Check if drop hit the ground
+          if (this.y > canvas.height) {
+            if (settings.enableSplash && this.layer < 2) {
+              createSplash(this.x, canvas.height, this.layer);
+            }
+            this.reset();
+          }
+
+          // Reset if out of horizontal bounds
+          if (this.x < -100 || this.x > canvas.width + 100) {
+            this.reset();
+          }
+        }
+
+        draw() {
+          const rgb = hexToRgb(settings.rainColor);
+
+          ctx.save();
+          ctx.translate(this.x, this.y);
+
+          // Calculate angle from wind
+          const angle = Math.atan2(this.speed, this.windX);
+          ctx.rotate(angle - Math.PI / 2);
+
+          // Glow effect
+          if (settings.enableGlow && this.glowSize > 0) {
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.glowSize);
+            gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity * 0.3})`);
+            gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(-this.glowSize, -this.length / 2 - this.glowSize, this.glowSize * 2, this.length + this.glowSize * 2);
+          }
+
+          // Motion blur trail
+          if (settings.motionBlur > 0) {
+            const trailLength = this.length * settings.motionBlur * 2;
+            const trailGradient = ctx.createLinearGradient(0, -trailLength, 0, 0);
+            trailGradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+            trailGradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity * 0.5})`);
+            ctx.fillStyle = trailGradient;
+            ctx.fillRect(-this.width / 2, -trailLength, this.width, trailLength);
+          }
+
+          // Main raindrop
+          const dropGradient = ctx.createLinearGradient(0, -this.length / 2, 0, this.length / 2);
+          dropGradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity * 0.3})`);
+          dropGradient.addColorStop(0.3, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity})`);
+          dropGradient.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity})`);
+          dropGradient.addColorStop(1, `rgba(${rgb.r + 40}, ${rgb.g + 40}, ${rgb.b + 40}, ${this.opacity * 0.8})`);
+
+          ctx.fillStyle = dropGradient;
+          ctx.beginPath();
+          ctx.roundRect(-this.width / 2, -this.length / 2, this.width, this.length, this.width / 2);
+          ctx.fill();
+
+          // Highlight
+          ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity * 0.3})`;
+          ctx.beginPath();
+          ctx.roundRect(-this.width / 4, -this.length / 2, this.width / 2, this.length * 0.3, this.width / 4);
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+
+      // ==========================================================================
+      // SPLASH CLASS
+      // ==========================================================================
+
+      class Splash {
+        constructor(x, y, layer) {
+          this.x = x;
+          this.y = y;
+          this.layer = layer;
+          this.particles = [];
+          this.lifetime = 0;
+          this.maxLifetime = 30;
+
+          const layerFactor = 1 - (layer / settings.depthLayers) * 0.5;
+          const particleCount = Math.floor(random(3, 7) * settings.splashIntensity);
+
+          for (let i = 0; i < particleCount; i++) {
+            const angle = random(-Math.PI, 0);
+            const speed = random(1, 4) * layerFactor * settings.splashIntensity;
+            this.particles.push({
+              x: 0,
+              y: 0,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: random(1, 3) * layerFactor,
+              opacity: random(0.5, 1)
+            });
+          }
+        }
+
+        update() {
+          this.lifetime++;
+
+          for (const p of this.particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15; // Gravity
+            p.opacity *= 0.92;
+          }
+
+          return this.lifetime < this.maxLifetime;
+        }
+
+        draw() {
+          const rgb = hexToRgb(settings.rainColor);
+          const progress = this.lifetime / this.maxLifetime;
+
+          ctx.save();
+          ctx.translate(this.x, this.y);
+
+          // Ripple effect
+          const rippleRadius = progress * 20 * settings.splashIntensity;
+          const rippleOpacity = (1 - progress) * 0.3;
+          ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${rippleOpacity})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rippleRadius, rippleRadius * 0.3, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Particles
+          for (const p of this.particles) {
+            if (p.opacity < 0.05) continue;
+
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.opacity})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+      }
+
+      function createSplash(x, y, layer) {
+        if (splashes.length < 100) {
+          splashes.push(new Splash(x, y, layer));
+        }
+      }
+
+      // ==========================================================================
+      // INITIALIZATION
+      // ==========================================================================
+
+      function initDrops() {
+        drops = [];
+        const totalDrops = settings.rainIntensity;
+        const dropsPerLayer = Math.floor(totalDrops / settings.depthLayers);
+
+        for (let layer = 0; layer < settings.depthLayers; layer++) {
+          // More drops in background layers
+          const layerDrops = dropsPerLayer * (1 + layer * 0.3);
+          for (let i = 0; i < layerDrops; i++) {
+            const drop = new Raindrop(layer);
+            // Distribute initial positions
+            drop.y = random(-canvas.height, canvas.height);
+            drops.push(drop);
+          }
+        }
+
+        // Sort by layer (back to front)
+        drops.sort((a, b) => b.layer - a.layer);
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+
+        // Reinitialize drops for new size
+        if (settings.rainIntensity) {
+          initDrops();
+        }
+      }
+
+      // ==========================================================================
+      // RENDERING
+      // ==========================================================================
+
+      function drawBackground() {
+        if (settings.backgroundOpacity <= 0) {
+          ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+          return;
+        }
+
+        if (settings.enableGradient) {
+          const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height / dpr);
+          const topRgb = hexToRgb(settings.gradientTopColor);
+          const bottomRgb = hexToRgb(settings.gradientBottomColor);
+          gradient.addColorStop(0, `rgba(${topRgb.r}, ${topRgb.g}, ${topRgb.b}, ${settings.backgroundOpacity})`);
+          gradient.addColorStop(1, `rgba(${bottomRgb.r}, ${bottomRgb.g}, ${bottomRgb.b}, ${settings.backgroundOpacity})`);
+          ctx.fillStyle = gradient;
+        } else {
+          const rgb = hexToRgb(settings.backgroundColor);
+          ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${settings.backgroundOpacity})`;
+        }
+
+        ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      }
+
+      function animate(currentTime) {
+        if (isPaused) return;
+
+        const deltaTime = Math.min(currentTime - lastTime, 50);
+        lastTime = currentTime;
+
+        // Clear with slight fade for trail effect
+        ctx.globalCompositeOperation = 'source-over';
+        drawBackground();
+
+        // Update and draw drops
+        for (const drop of drops) {
+          drop.update(deltaTime);
+          drop.draw();
+        }
+
+        // Update and draw splashes
+        splashes = splashes.filter(splash => {
+          const alive = splash.update();
+          if (alive) splash.draw();
+          return alive;
+        });
+
+        animationId = requestAnimationFrame(animate);
+      }
+
+      function start() {
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+        }
+        isPaused = false;
+        lastTime = performance.now();
+        animate(lastTime);
+      }
+
+      function stop() {
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        }
+      }
+
+      // ==========================================================================
+      // SETTINGS APPLICATION
+      // ==========================================================================
+
+      function applySettings(newSettings, changedKeys = []) {
+        const needsReinit = changedKeys.some(key =>
+          ['rainIntensity', 'depthLayers'].includes(key)
+        );
+
+        settings = { ...newSettings };
+
+        // Update mist layer
+        if (settings.enableMist) {
+          mistLayer.style.opacity = settings.mistDensity;
+        } else {
+          mistLayer.style.opacity = 0;
+        }
+
+        // Reinitialize drops if needed
+        if (needsReinit || drops.length === 0) {
+          initDrops();
+        }
+
+        // Update existing drops with new settings
+        for (const drop of drops) {
+          drop.glowSize = drop.width * 3 * settings.glowIntensity;
+        }
+      }
+
+      function resetToDefaults() {
+        // The host will handle resetting settings
+        console.log('[RainEffect] Reset requested');
+      }
+
+      // ==========================================================================
+      // EVENT HANDLERS
+      // ==========================================================================
+
+      api.onSettingsChange((newSettings, changedKeys) => {
+        console.log('[RainEffect] Settings changed:', changedKeys);
+        applySettings(newSettings, changedKeys);
+      });
+
+      api.onButtonClick('resetButton', () => {
+        resetToDefaults();
+      });
+
+      api.onEvent('viewport:resize', ({ width, height }) => {
+        console.log(`[RainEffect] Viewport resized: ${width}x${height}`);
+        resize();
+      });
+
+      api.onEvent('theme:change', ({ theme }) => {
+        console.log(`[RainEffect] Theme changed: ${theme}`);
+      });
+
+      api.onMount(() => {
+        console.log('[RainEffect] Mounted');
+      });
+
+      api.onUnmount(() => {
+        console.log('[RainEffect] Unmounting');
+        stop();
+      });
+
+      api.onPause(() => {
+        console.log('[RainEffect] Paused');
+        isPaused = true;
+        stop();
+      });
+
+      api.onResume(() => {
+        console.log('[RainEffect] Resumed');
+        isPaused = false;
+        start();
+      });
+
+      // Handle window resize
+      window.addEventListener('resize', resize);
+
+      // ==========================================================================
+      // INITIALIZATION
+      // ==========================================================================
+
+      function init() {
+        console.log('[RainEffect] Initializing...');
+
+        // Set canvas size
+        resize();
+
+        // Apply initial settings
+        applySettings(api.config);
+
+        // Start animation
+        start();
+
+        // Signal ready
+        api.ready({
+          capabilities: ['hot-reload'],
+          subscribedEvents: ['viewport:resize', 'theme:change']
+        });
+
+        api.renderComplete();
+
+        console.log('[RainEffect] Ready!');
+      }
+
+      init();
+
+    })();
+  </script>
+</body>
+</html>
