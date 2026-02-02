@@ -305,10 +305,6 @@
         applySettings(newSettings, changedKeys);
       });
 
-      api.onButtonClick('resetButton', () => {
-        console.log('[RainEffect] Reset requested');
-      });
-
       api.onEvent('viewport:resize', ({ width, height }) => {
         resize();
       });

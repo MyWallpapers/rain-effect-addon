@@ -2,10 +2,10 @@
   "name": "Rain Effect",
   "version": "1.0.0",
   "sdkVersion": "2.13.0",
-  "description": "Beautiful WebGL rain effect with realistic droplets, splashes, and customizable atmosphere",
+  "description": "Beautiful rain effect with realistic droplets and customizable settings",
   "author": "MyWallpaper Team",
   "license": "MIT",
-  "keywords": ["rain", "weather", "effect", "webgl", "ambient", "relaxing"],
+  "keywords": ["rain", "weather", "effect", "ambient", "relaxing"],
   "categories": ["effects", "weather", "ambient"],
   "capabilities": {
     "hotReload": true,
@@ -29,7 +29,7 @@
       "min": 100,
       "max": 2000,
       "step": 50,
-      "default": 800
+      "default": 200
     },
     "rainSpeed": {
       "type": "range",
@@ -38,7 +38,7 @@
       "min": 0.5,
       "max": 3,
       "step": 0.1,
-      "default": 1.2
+      "default": 1.7
     },
     "dropLength": {
       "type": "range",
@@ -47,7 +47,7 @@
       "min": 5,
       "max": 50,
       "step": 1,
-      "default": 20
+      "default": 42
     },
     "dropWidth": {
       "type": "range",
@@ -56,7 +56,7 @@
       "min": 0.5,
       "max": 4,
       "step": 0.1,
-      "default": 1.5
+      "default": 0.8
     },
     "windSection": {
       "type": "section",
@@ -69,7 +69,7 @@
       "min": -45,
       "max": 45,
       "step": 1,
-      "default": 10
+      "default": -5
     },
     "windVariation": {
       "type": "range",
@@ -78,7 +78,7 @@
       "min": 0,
       "max": 20,
       "step": 1,
-      "default": 5
+      "default": 0
     },
     "effectsSection": {
       "type": "section",
@@ -111,10 +111,6 @@
       "max": 5,
       "step": 1,
       "default": 3
-    },
-    "resetButton": {
-      "type": "button",
-      "buttonLabel": "Reset to Defaults"
     }
   },
   "defaultLayout": {
