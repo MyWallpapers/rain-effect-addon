@@ -1,19 +1,16 @@
 # Rain Effect Addon
 
-A beautiful, customizable rain effect addon for [MyWallpaper](https://github.com/your-username/MyWallpaper). Features realistic raindrops with parallax depth, splash effects, atmospheric mist, and extensive customization options.
-
-![Rain Effect Preview](preview.gif)
+A beautiful, customizable rain effect addon for [MyWallpaper](https://github.com/rayandu924/MyWallpaper). Features realistic raindrops with parallax depth, splash effects, and extensive customization options.
 
 ## Features
 
-- **Realistic Rain Simulation** - Smooth Canvas 2D rendering with depth layers for parallax effect
+- **Realistic Rain Simulation** - Smooth Canvas 2D rendering at 60fps
+- **Parallax Depth** - Multiple layers for 3D depth effect
 - **Splash Effects** - Particles and ripples when drops hit the ground
-- **Atmospheric Mist** - Optional fog/mist layer for ambiance
-- **Glow Effects** - Soft glow around raindrops for a dreamy look
-- **Motion Blur** - Trailing effect for fast-moving drops
-- **Highly Customizable** - 20+ settings to fine-tune every aspect
-- **Performance Optimized** - Efficient rendering with frame limiting
-- **Hot Reload** - See changes instantly without restarting
+- **Glow Effects** - Soft glow around raindrops
+- **Wind System** - Adjustable angle with natural variation
+- **Fully Transparent** - Overlays perfectly on any wallpaper
+- **Hot Reload** - See changes instantly
 
 ## Installation
 
@@ -49,65 +46,22 @@ A beautiful, customizable rain effect addon for [MyWallpaper](https://github.com
 | Splash Intensity | Size and visibility of splashes | 1.0 |
 | Enable Glow | Add soft glow to raindrops | On |
 | Glow Intensity | Brightness of glow effect | 0.3 |
-| Enable Mist | Add atmospheric mist layer | On |
-| Mist Density | Thickness of mist (0-0.5) | 0.15 |
-
-### Background
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Background Color | Base background color | `#0a0a1a` |
-| Background Opacity | Transparency (0 = transparent) | 0.85 |
-| Enable Gradient | Use gradient background | On |
-| Gradient Top | Top color of gradient | `#1a1a2e` |
-| Gradient Bottom | Bottom color of gradient | `#0f0f1a` |
 
 ### Advanced
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Depth Layers | Parallax depth layers (1-5) | 3 |
-| Motion Blur | Trail effect intensity (0-1) | 0.4 |
-
-## Development
-
-### Local Testing
-
-1. Start a local server in the addon directory:
-   ```bash
-   npx serve .
-   ```
-
-2. In MyWallpaper, go to **Settings > Developer**
-3. Enter `http://localhost:3000` (or your server URL)
-4. Toggle **Enable Developer Mode**
-
-### Project Structure
-
-```
-rain-effect-addon/
-├── manifest.json    # Addon metadata and settings configuration
-├── index.html       # Main addon code (Canvas 2D rendering)
-└── README.md        # This file
-```
-
-## Technical Details
-
-- **Rendering**: Canvas 2D API with composite operations
-- **Animation**: requestAnimationFrame for smooth 60fps
-- **Parallax**: Multiple depth layers with varying speed/size
-- **Memory**: Efficient object pooling for drops and splashes
 
 ## Performance Tips
 
 - Lower **Rain Intensity** for better performance on older hardware
 - Reduce **Depth Layers** to decrease CPU usage
-- Disable **Splash Effect** if experiencing lag
-- Lower **Glow Intensity** or disable glow for faster rendering
+- Disable **Splash Effect** or **Glow** if experiencing lag
 
 ## License
 
-MIT License - Feel free to use, modify, and distribute.
+MIT License
 
 ## Credits
 

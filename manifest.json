@@ -114,58 +114,6 @@
       "step": 0.05,
       "default": 0.3
     },
-    "enableMist": {
-      "type": "boolean",
-      "label": "Enable Mist",
-      "description": "Add atmospheric mist/fog effect",
-      "default": true
-    },
-    "mistDensity": {
-      "type": "range",
-      "label": "Mist Density",
-      "description": "Thickness of the mist layer",
-      "min": 0,
-      "max": 0.5,
-      "step": 0.01,
-      "default": 0.15
-    },
-    "backgroundSection": {
-      "type": "section",
-      "label": "Background"
-    },
-    "backgroundColor": {
-      "type": "color",
-      "label": "Background Color",
-      "description": "Base background color",
-      "default": "#0a0a1a"
-    },
-    "backgroundOpacity": {
-      "type": "range",
-      "label": "Background Opacity",
-      "description": "Transparency of background (0 = fully transparent)",
-      "min": 0,
-      "max": 1,
-      "step": 0.05,
-      "default": 0.85
-    },
-    "enableGradient": {
-      "type": "boolean",
-      "label": "Enable Gradient",
-      "description": "Use gradient background instead of solid color",
-      "default": true
-    },
-    "gradientTopColor": {
-      "type": "color",
-      "label": "Gradient Top",
-      "description": "Top color of the background gradient",
-      "default": "#1a1a2e"
-    },
-    "gradientBottomColor": {
-      "type": "color",
-      "label": "Gradient Bottom",
-      "description": "Bottom color of the background gradient",
-      "default": "#0f0f1a"
-    },
     "advancedSection": {
       "type": "section",
       "label": "Advanced"
@@ -178,15 +126,6 @@
       "max": 5,
       "step": 1,
       "default": 3
-    },
-    "motionBlur": {
-      "type": "range",
-      "label": "Motion Blur",
-      "description": "Trail effect behind raindrops",
-      "min": 0,
-      "max": 1,
-      "step": 0.05,
-      "default": 0.4
     },
     "resetButton": {
       "type": "button",

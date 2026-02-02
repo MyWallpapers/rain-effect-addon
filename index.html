@@ -28,37 +28,14 @@
       width: 100%;
       height: 100%;
     }
-
-    #mist-layer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      opacity: 0;
-      background: linear-gradient(
-        to bottom,
-        rgba(100, 120, 140, 0.1) 0%,
-        rgba(80, 100, 120, 0.2) 50%,
-        rgba(60, 80, 100, 0.15) 100%
-      );
-      animation: mistPulse 8s ease-in-out infinite;
-    }
-
-    @keyframes mistPulse {
-      0%, 100% { opacity: 0.7; }
-      50% { opacity: 1; }
-    }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
-  <div id="mist-layer"></div>
 
   <script>
     // ==========================================================================
-    // Rain Effect Addon - Beautiful WebGL Rain Simulation
+    // Rain Effect Addon - Canvas 2D Rain Simulation
     // ==========================================================================
 
     (function() {
@@ -66,8 +43,7 @@
 
       const api = window.MyWallpaper;
       const canvas = document.getElementById('canvas');
-      const mistLayer = document.getElementById('mist-layer');
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { alpha: true });
 
       // State
       let drops = [];
@@ -77,8 +53,13 @@
       let lastTime = 0;
       let settings = {};
 
-      // Performance optimization
-      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // Cached values for performance
+      let cachedRgb = { r: 168, g: 200, b: 232 };
+      let canvasW = 0;
+      let canvasH = 0;
+
+      // Limit DPR for performance
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       // ==========================================================================
       // UTILITY FUNCTIONS
@@ -93,10 +74,6 @@
         } : { r: 168, g: 200, b: 232 };
       }
 
-      function lerp(a, b, t) {
-        return a + (b - a) * t;
-      }
-
       function random(min, max) {
         return Math.random() * (max - min) + min;
       }
@@ -108,15 +85,19 @@
       class Raindrop {
         constructor(layer) {
           this.layer = layer;
+          this.x = 0;
+          this.y = 0;
+          this.length = 0;
+          this.width = 0;
+          this.speed = 0;
+          this.windX = 0;
+          this.opacity = 0;
+          this.glowSize = 0;
           this.reset();
         }
 
         reset() {
           const layerFactor = 1 - (this.layer / settings.depthLayers) * 0.6;
-
-          // Position
-          this.x = random(-50, canvas.width + 50);
-          this.y = random(-100, -20);
 
           // Size based on layer (closer = larger)
           this.length = settings.dropLength * layerFactor * random(0.7, 1.3);
@@ -129,35 +110,52 @@
           const windRad = (settings.windAngle + random(-settings.windVariation, settings.windVariation)) * Math.PI / 180;
           this.windX = Math.tan(windRad) * this.speed;
 
+          // Spawn position: uniform distribution along the entry perimeter
+          const totalLength = canvasW + canvasH;
+          const spawnPoint = random(0, totalLength);
+
+          if (spawnPoint < canvasW) {
+            // Spawn from top edge
+            this.x = spawnPoint;
+            this.y = random(-100, -20);
+          } else {
+            // Spawn from side edge
+            this.y = spawnPoint - canvasW;
+            if (settings.windAngle >= 0) {
+              this.x = random(-50, -10);
+            } else {
+              this.x = canvasW + random(10, 50);
+            }
+          }
+
           // Opacity based on layer
           this.opacity = layerFactor * random(0.4, 0.9);
 
-          // Glow
-          this.glowSize = this.width * 3 * settings.glowIntensity;
+          // Glow size
+          this.glowSize = settings.enableGlow ? this.width * 3 * settings.glowIntensity : 0;
         }
 
-        update(deltaTime) {
-          const dt = deltaTime * 0.06;
-
+        update(dt) {
           this.y += this.speed * dt;
           this.x += this.windX * dt;
 
           // Check if drop hit the ground
-          if (this.y > canvas.height) {
+          if (this.y > canvasH) {
             if (settings.enableSplash && this.layer < 2) {
-              createSplash(this.x, canvas.height, this.layer);
+              createSplash(this.x, canvasH, this.layer);
             }
             this.reset();
+            return;
           }
 
           // Reset if out of horizontal bounds
-          if (this.x < -100 || this.x > canvas.width + 100) {
+          if (this.x < -100 || this.x > canvasW + 100) {
             this.reset();
           }
         }
 
         draw() {
-          const rgb = hexToRgb(settings.rainColor);
+          const { r, g, b } = cachedRgb;
 
           ctx.save();
           ctx.translate(this.x, this.y);
@@ -167,40 +165,32 @@
           ctx.rotate(angle - Math.PI / 2);
 
           // Glow effect
-          if (settings.enableGlow && this.glowSize > 0) {
+          if (this.glowSize > 0) {
             const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.glowSize);
-            gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity * 0.3})`);
-            gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+            gradient.addColorStop(0, `rgba(${r},${g},${b},${this.opacity * 0.3})`);
+            gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
             ctx.fillStyle = gradient;
             ctx.fillRect(-this.glowSize, -this.length / 2 - this.glowSize, this.glowSize * 2, this.length + this.glowSize * 2);
           }
 
-          // Motion blur trail
-          if (settings.motionBlur > 0) {
-            const trailLength = this.length * settings.motionBlur * 2;
-            const trailGradient = ctx.createLinearGradient(0, -trailLength, 0, 0);
-            trailGradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
-            trailGradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity * 0.5})`);
-            ctx.fillStyle = trailGradient;
-            ctx.fillRect(-this.width / 2, -trailLength, this.width, trailLength);
-          }
-
           // Main raindrop
-          const dropGradient = ctx.createLinearGradient(0, -this.length / 2, 0, this.length / 2);
-          dropGradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity * 0.3})`);
-          dropGradient.addColorStop(0.3, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity})`);
-          dropGradient.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity})`);
-          dropGradient.addColorStop(1, `rgba(${rgb.r + 40}, ${rgb.g + 40}, ${rgb.b + 40}, ${this.opacity * 0.8})`);
+          const halfLen = this.length / 2;
+          const halfW = this.width / 2;
+          const dropGradient = ctx.createLinearGradient(0, -halfLen, 0, halfLen);
+          dropGradient.addColorStop(0, `rgba(${r},${g},${b},${this.opacity * 0.3})`);
+          dropGradient.addColorStop(0.3, `rgba(${r},${g},${b},${this.opacity})`);
+          dropGradient.addColorStop(0.7, `rgba(${r},${g},${b},${this.opacity})`);
+          dropGradient.addColorStop(1, `rgba(${Math.min(r + 40, 255)},${Math.min(g + 40, 255)},${Math.min(b + 40, 255)},${this.opacity * 0.8})`);
 
           ctx.fillStyle = dropGradient;
           ctx.beginPath();
-          ctx.roundRect(-this.width / 2, -this.length / 2, this.width, this.length, this.width / 2);
+          ctx.roundRect(-halfW, -halfLen, this.width, this.length, halfW);
           ctx.fill();
 
           // Highlight
-          ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity * 0.3})`;
+          ctx.fillStyle = `rgba(255,255,255,${this.opacity * 0.3})`;
           ctx.beginPath();
-          ctx.roundRect(-this.width / 4, -this.length / 2, this.width / 2, this.length * 0.3, this.width / 4);
+          ctx.roundRect(-halfW / 2, -halfLen, halfW, this.length * 0.3, halfW / 2);
           ctx.fill();
 
           ctx.restore();
@@ -215,43 +205,42 @@
         constructor(x, y, layer) {
           this.x = x;
           this.y = y;
-          this.layer = layer;
-          this.particles = [];
           this.lifetime = 0;
           this.maxLifetime = 30;
 
           const layerFactor = 1 - (layer / settings.depthLayers) * 0.5;
           const particleCount = Math.floor(random(3, 7) * settings.splashIntensity);
 
+          this.particles = new Array(particleCount);
           for (let i = 0; i < particleCount; i++) {
             const angle = random(-Math.PI, 0);
             const speed = random(1, 4) * layerFactor * settings.splashIntensity;
-            this.particles.push({
+            this.particles[i] = {
               x: 0,
               y: 0,
               vx: Math.cos(angle) * speed,
               vy: Math.sin(angle) * speed,
               size: random(1, 3) * layerFactor,
               opacity: random(0.5, 1)
-            });
+            };
           }
         }
 
         update() {
           this.lifetime++;
-
-          for (const p of this.particles) {
+          const particles = this.particles;
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
             p.x += p.vx;
             p.y += p.vy;
-            p.vy += 0.15; // Gravity
+            p.vy += 0.15;
             p.opacity *= 0.92;
           }
-
           return this.lifetime < this.maxLifetime;
         }
 
         draw() {
-          const rgb = hexToRgb(settings.rainColor);
+          const { r, g, b } = cachedRgb;
           const progress = this.lifetime / this.maxLifetime;
 
           ctx.save();
@@ -260,17 +249,18 @@
           // Ripple effect
           const rippleRadius = progress * 20 * settings.splashIntensity;
           const rippleOpacity = (1 - progress) * 0.3;
-          ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${rippleOpacity})`;
+          ctx.strokeStyle = `rgba(${r},${g},${b},${rippleOpacity})`;
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.ellipse(0, 0, rippleRadius, rippleRadius * 0.3, 0, 0, Math.PI * 2);
           ctx.stroke();
 
           // Particles
-          for (const p of this.particles) {
+          const particles = this.particles;
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
             if (p.opacity < 0.05) continue;
-
-            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.opacity})`;
+            ctx.fillStyle = `rgba(${r},${g},${b},${p.opacity})`;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
             ctx.fill();
@@ -296,12 +286,10 @@
         const dropsPerLayer = Math.floor(totalDrops / settings.depthLayers);
 
         for (let layer = 0; layer < settings.depthLayers; layer++) {
-          // More drops in background layers
-          const layerDrops = dropsPerLayer * (1 + layer * 0.3);
+          const layerDrops = Math.floor(dropsPerLayer * (1 + layer * 0.3));
           for (let i = 0; i < layerDrops; i++) {
             const drop = new Raindrop(layer);
-            // Distribute initial positions
-            drop.y = random(-canvas.height, canvas.height);
+            drop.y = random(0, canvasH);
             drops.push(drop);
           }
         }
@@ -316,6 +304,10 @@
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
 
+        // Cache dimensions
+        canvasW = rect.width;
+        canvasH = rect.height;
+
         // Reinitialize drops for new size
         if (settings.rainIntensity) {
           initDrops();
@@ -326,49 +318,31 @@
       // RENDERING
       // ==========================================================================
 
-      function drawBackground() {
-        if (settings.backgroundOpacity <= 0) {
-          ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-          return;
-        }
-
-        if (settings.enableGradient) {
-          const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height / dpr);
-          const topRgb = hexToRgb(settings.gradientTopColor);
-          const bottomRgb = hexToRgb(settings.gradientBottomColor);
-          gradient.addColorStop(0, `rgba(${topRgb.r}, ${topRgb.g}, ${topRgb.b}, ${settings.backgroundOpacity})`);
-          gradient.addColorStop(1, `rgba(${bottomRgb.r}, ${bottomRgb.g}, ${bottomRgb.b}, ${settings.backgroundOpacity})`);
-          ctx.fillStyle = gradient;
-        } else {
-          const rgb = hexToRgb(settings.backgroundColor);
-          ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${settings.backgroundOpacity})`;
-        }
-
-        ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-      }
-
       function animate(currentTime) {
         if (isPaused) return;
 
         const deltaTime = Math.min(currentTime - lastTime, 50);
         lastTime = currentTime;
+        const dt = deltaTime * 0.06;
 
-        // Clear with slight fade for trail effect
-        ctx.globalCompositeOperation = 'source-over';
-        drawBackground();
+        // Clear canvas
+        ctx.clearRect(0, 0, canvasW, canvasH);
 
         // Update and draw drops
-        for (const drop of drops) {
-          drop.update(deltaTime);
-          drop.draw();
+        for (let i = 0; i < drops.length; i++) {
+          drops[i].update(dt);
+          drops[i].draw();
         }
 
         // Update and draw splashes
-        splashes = splashes.filter(splash => {
-          const alive = splash.update();
-          if (alive) splash.draw();
-          return alive;
-        });
+        let splashCount = splashes.length;
+        for (let i = splashCount - 1; i >= 0; i--) {
+          if (splashes[i].update()) {
+            splashes[i].draw();
+          } else {
+            splashes.splice(i, 1);
+          }
+        }
 
         animationId = requestAnimationFrame(animate);
       }
@@ -379,7 +353,7 @@
         }
         isPaused = false;
         lastTime = performance.now();
-        animate(lastTime);
+        animationId = requestAnimationFrame(animate);
       }
 
       function stop() {
@@ -400,27 +374,20 @@
 
         settings = { ...newSettings };
 
-        // Update mist layer
-        if (settings.enableMist) {
-          mistLayer.style.opacity = settings.mistDensity;
-        } else {
-          mistLayer.style.opacity = 0;
-        }
+        // Cache RGB color
+        cachedRgb = hexToRgb(settings.rainColor);
 
         // Reinitialize drops if needed
         if (needsReinit || drops.length === 0) {
           initDrops();
         }
 
-        // Update existing drops with new settings
-        for (const drop of drops) {
-          drop.glowSize = drop.width * 3 * settings.glowIntensity;
+        // Update existing drops glow
+        if (changedKeys.includes('enableGlow') || changedKeys.includes('glowIntensity')) {
+          for (let i = 0; i < drops.length; i++) {
+            drops[i].glowSize = settings.enableGlow ? drops[i].width * 3 * settings.glowIntensity : 0;
+          }
         }
-      }
-
-      function resetToDefaults() {
-        // The host will handle resetting settings
-        console.log('[RainEffect] Reset requested');
       }
 
       // ==========================================================================
@@ -428,21 +395,15 @@
       // ==========================================================================
 
       api.onSettingsChange((newSettings, changedKeys) => {
-        console.log('[RainEffect] Settings changed:', changedKeys);
         applySettings(newSettings, changedKeys);
       });
 
       api.onButtonClick('resetButton', () => {
-        resetToDefaults();
+        console.log('[RainEffect] Reset requested');
       });
 
       api.onEvent('viewport:resize', ({ width, height }) => {
-        console.log(`[RainEffect] Viewport resized: ${width}x${height}`);
         resize();
-      });
-
-      api.onEvent('theme:change', ({ theme }) => {
-        console.log(`[RainEffect] Theme changed: ${theme}`);
       });
 
       api.onMount(() => {
@@ -452,21 +413,20 @@
       api.onUnmount(() => {
         console.log('[RainEffect] Unmounting');
         stop();
+        drops = [];
+        splashes = [];
       });
 
       api.onPause(() => {
-        console.log('[RainEffect] Paused');
         isPaused = true;
         stop();
       });
 
       api.onResume(() => {
-        console.log('[RainEffect] Resumed');
         isPaused = false;
         start();
       });
 
-      // Handle window resize
       window.addEventListener('resize', resize);
 
       // ==========================================================================
@@ -474,29 +434,30 @@
       // ==========================================================================
 
       function init() {
-        console.log('[RainEffect] Initializing...');
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          requestAnimationFrame(init);
+          return;
+        }
 
-        // Set canvas size
         resize();
-
-        // Apply initial settings
         applySettings(api.config);
-
-        // Start animation
         start();
 
-        // Signal ready
         api.ready({
           capabilities: ['hot-reload'],
           subscribedEvents: ['viewport:resize', 'theme:change']
         });
 
         api.renderComplete();
-
-        console.log('[RainEffect] Ready!');
+        console.log('[RainEffect] Ready');
       }
 
-      init();
+      if (document.readyState === 'complete') {
+        init();
+      } else {
+        window.addEventListener('load', init);
+      }
 
     })();
   </script>
