@@ -5,39 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rain Effect</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    body {
-      background: transparent;
-    }
-
-    #canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+    #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
 
   <script>
-    // ==========================================================================
-    // Rain Effect Addon - Canvas 2D Rain Simulation
-    // ==========================================================================
-
     (function() {
       'use strict';
 
@@ -52,34 +28,27 @@
       let lastTime = 0;
       let settings = {};
 
-      // Cached values for performance
-      let cachedRgb = { r: 168, g: 200, b: 232 };
+      // Cached values (updated on settings change only)
+      let cachedColorStr = 'rgb(168,200,232)';
       let canvasW = 0;
       let canvasH = 0;
 
-      // Limit DPR for performance
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      // ==========================================================================
-      // UTILITY FUNCTIONS
-      // ==========================================================================
+      // ---- Utilities ----
 
       function hexToRgb(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-          r: parseInt(result[1], 16),
-          g: parseInt(result[2], 16),
-          b: parseInt(result[3], 16)
-        } : { r: 168, g: 200, b: 232 };
+        const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return r
+          ? `rgb(${parseInt(r[1], 16)},${parseInt(r[2], 16)},${parseInt(r[3], 16)})`
+          : 'rgb(168,200,232)';
       }
 
       function random(min, max) {
         return Math.random() * (max - min) + min;
       }
 
-      // ==========================================================================
-      // RAINDROP CLASS
-      // ==========================================================================
+      // ---- Raindrop ----
 
       class Raindrop {
         constructor(layer) {
@@ -88,130 +57,73 @@
           this.y = 0;
           this.length = 0;
           this.width = 0;
-          this.speed = 0;
-          this.windX = 0;
+          this.speedX = 0;
+          this.speedY = 0;
+          this.dirX = 0;
+          this.dirY = 0;
           this.opacity = 0;
-          this.glowSize = 0;
+          this.glowWidth = 0;
           this.reset();
         }
 
         reset() {
           const layerFactor = 1 - (this.layer / settings.depthLayers) * 0.6;
 
-          // Size based on layer (closer = larger)
           this.length = settings.dropLength * layerFactor * random(0.7, 1.3);
           this.width = settings.dropWidth * layerFactor * random(0.8, 1.2);
 
-          // Speed based on layer (closer = faster)
-          this.speed = settings.rainSpeed * layerFactor * random(0.8, 1.2) * 15;
-
-          // Wind effect
+          const baseSpeed = settings.rainSpeed * layerFactor * random(0.8, 1.2) * 15;
           const windRad = (settings.windAngle + random(-settings.windVariation, settings.windVariation)) * Math.PI / 180;
-          this.windX = Math.tan(windRad) * this.speed;
 
-          // Spawn position: uniform distribution along the entry perimeter
-          const totalLength = canvasW + canvasH;
-          const spawnPoint = random(0, totalLength);
+          this.speedX = Math.tan(windRad) * baseSpeed;
+          this.speedY = baseSpeed;
+
+          // Pre-compute normalized direction for line endpoints
+          const mag = Math.sqrt(this.speedX * this.speedX + this.speedY * this.speedY);
+          this.dirX = this.speedX / mag;
+          this.dirY = this.speedY / mag;
+
+          // Spawn position: uniform along entry perimeter
+          const spawnPoint = random(0, canvasW + canvasH);
 
           if (spawnPoint < canvasW) {
-            // Spawn from top edge
             this.x = spawnPoint;
             this.y = random(-100, -20);
           } else {
-            // Spawn from side edge
             this.y = spawnPoint - canvasW;
-            if (settings.windAngle >= 0) {
-              this.x = random(-50, -10);
-            } else {
-              this.x = canvasW + random(10, 50);
-            }
+            this.x = settings.windAngle >= 0 ? random(-50, -10) : canvasW + random(10, 50);
           }
 
-          // Opacity based on layer
           this.opacity = layerFactor * random(0.4, 0.9);
-
-          // Glow size
-          this.glowSize = settings.enableGlow ? this.width * 3 * settings.glowIntensity : 0;
+          this.glowWidth = settings.enableGlow ? this.width * 3 : 0;
         }
 
         update(dt) {
-          this.y += this.speed * dt;
-          this.x += this.windX * dt;
+          this.y += this.speedY * dt;
+          this.x += this.speedX * dt;
 
-          // Check if drop hit the ground
-          if (this.y > canvasH) {
-            this.reset();
-            return;
-          }
-
-          // Reset if out of horizontal bounds
-          if (this.x < -100 || this.x > canvasW + 100) {
+          if (this.y > canvasH || this.x < -100 || this.x > canvasW + 100) {
             this.reset();
           }
-        }
-
-        draw() {
-          const { r, g, b } = cachedRgb;
-
-          ctx.save();
-          ctx.translate(this.x, this.y);
-
-          // Calculate angle from wind
-          const angle = Math.atan2(this.speed, this.windX);
-          ctx.rotate(angle - Math.PI / 2);
-
-          // Glow effect
-          if (this.glowSize > 0) {
-            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.glowSize);
-            gradient.addColorStop(0, `rgba(${r},${g},${b},${this.opacity * 0.3})`);
-            gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(-this.glowSize, -this.length / 2 - this.glowSize, this.glowSize * 2, this.length + this.glowSize * 2);
-          }
-
-          // Main raindrop
-          const halfLen = this.length / 2;
-          const halfW = this.width / 2;
-          const dropGradient = ctx.createLinearGradient(0, -halfLen, 0, halfLen);
-          dropGradient.addColorStop(0, `rgba(${r},${g},${b},${this.opacity * 0.3})`);
-          dropGradient.addColorStop(0.3, `rgba(${r},${g},${b},${this.opacity})`);
-          dropGradient.addColorStop(0.7, `rgba(${r},${g},${b},${this.opacity})`);
-          dropGradient.addColorStop(1, `rgba(${Math.min(r + 40, 255)},${Math.min(g + 40, 255)},${Math.min(b + 40, 255)},${this.opacity * 0.8})`);
-
-          ctx.fillStyle = dropGradient;
-          ctx.beginPath();
-          ctx.roundRect(-halfW, -halfLen, this.width, this.length, halfW);
-          ctx.fill();
-
-          // Highlight
-          ctx.fillStyle = `rgba(255,255,255,${this.opacity * 0.3})`;
-          ctx.beginPath();
-          ctx.roundRect(-halfW / 2, -halfLen, halfW, this.length * 0.3, halfW / 2);
-          ctx.fill();
-
-          ctx.restore();
         }
       }
 
-      // ==========================================================================
-      // INITIALIZATION
-      // ==========================================================================
+      // ---- Init ----
 
       function initDrops() {
         drops = [];
-        const totalDrops = settings.rainIntensity;
-        const dropsPerLayer = Math.floor(totalDrops / settings.depthLayers);
+        const dropsPerLayer = Math.floor(settings.rainIntensity / settings.depthLayers);
 
         for (let layer = 0; layer < settings.depthLayers; layer++) {
-          const layerDrops = Math.floor(dropsPerLayer * (1 + layer * 0.3));
-          for (let i = 0; i < layerDrops; i++) {
+          const count = Math.floor(dropsPerLayer * (1 + layer * 0.3));
+          for (let i = 0; i < count; i++) {
             const drop = new Raindrop(layer);
             drop.y = random(0, canvasH);
             drops.push(drop);
           }
         }
 
-        // Sort by layer (back to front)
+        // Sort back to front
         drops.sort((a, b) => b.layer - a.layer);
       }
 
@@ -221,19 +133,13 @@
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
 
-        // Cache dimensions
         canvasW = rect.width;
         canvasH = rect.height;
 
-        // Reinitialize drops for new size
-        if (settings.rainIntensity) {
-          initDrops();
-        }
+        if (settings.rainIntensity) initDrops();
       }
 
-      // ==========================================================================
-      // RENDERING
-      // ==========================================================================
+      // ---- Render ----
 
       function animate(currentTime) {
         if (isPaused) return;
@@ -242,22 +148,48 @@
         lastTime = currentTime;
         const dt = deltaTime * 0.06;
 
-        // Clear canvas
         ctx.clearRect(0, 0, canvasW, canvasH);
+        ctx.strokeStyle = cachedColorStr;
+        ctx.lineCap = 'round';
 
-        // Update and draw drops
-        for (let i = 0; i < drops.length; i++) {
-          drops[i].update(dt);
-          drops[i].draw();
+        const glowEnabled = settings.enableGlow;
+        const glowAlpha = settings.glowIntensity;
+
+        for (let i = 0, len = drops.length; i < len; i++) {
+          const drop = drops[i];
+          drop.update(dt);
+
+          const halfLen = drop.length * 0.5;
+          const x1 = drop.x - drop.dirX * halfLen;
+          const y1 = drop.y - drop.dirY * halfLen;
+          const x2 = drop.x + drop.dirX * halfLen;
+          const y2 = drop.y + drop.dirY * halfLen;
+
+          // Glow: wider semi-transparent stroke
+          if (glowEnabled) {
+            ctx.globalAlpha = drop.opacity * glowAlpha;
+            ctx.lineWidth = drop.glowWidth;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+          }
+
+          // Main drop: simple line
+          ctx.globalAlpha = drop.opacity;
+          ctx.lineWidth = drop.width;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
         }
 
+        ctx.globalAlpha = 1;
         animationId = requestAnimationFrame(animate);
       }
 
       function start() {
-        if (animationId) {
-          cancelAnimationFrame(animationId);
-        }
+        if (animationId) cancelAnimationFrame(animationId);
         isPaused = false;
         lastTime = performance.now();
         animationId = requestAnimationFrame(animate);
@@ -270,9 +202,7 @@
         }
       }
 
-      // ==========================================================================
-      // SETTINGS APPLICATION
-      // ==========================================================================
+      // ---- Settings ----
 
       function applySettings(newSettings, changedKeys = []) {
         const needsReinit = changedKeys.some(key =>
@@ -280,60 +210,34 @@
         );
 
         settings = { ...newSettings };
+        cachedColorStr = hexToRgb(settings.rainColor);
 
-        // Cache RGB color
-        cachedRgb = hexToRgb(settings.rainColor);
-
-        // Reinitialize drops if needed
         if (needsReinit || drops.length === 0) {
           initDrops();
         }
 
-        // Update existing drops glow
         if (changedKeys.includes('enableGlow') || changedKeys.includes('glowIntensity')) {
           for (let i = 0; i < drops.length; i++) {
-            drops[i].glowSize = settings.enableGlow ? drops[i].width * 3 * settings.glowIntensity : 0;
+            drops[i].glowWidth = settings.enableGlow ? drops[i].width * 3 : 0;
           }
         }
       }
 
-      // ==========================================================================
-      // EVENT HANDLERS
-      // ==========================================================================
+      // ---- Events ----
 
       api.onSettingsChange((newSettings, changedKeys) => {
         applySettings(newSettings, changedKeys);
       });
 
-      api.onEvent('viewport:resize', ({ width, height }) => {
-        resize();
-      });
-
-      api.onMount(() => {
-        console.log('[RainEffect] Mounted');
-      });
-
-      api.onUnmount(() => {
-        console.log('[RainEffect] Unmounting');
-        stop();
-        drops = [];
-      });
-
-      api.onPause(() => {
-        isPaused = true;
-        stop();
-      });
-
-      api.onResume(() => {
-        isPaused = false;
-        start();
-      });
+      api.onEvent('viewport:resize', () => resize());
+      api.onMount(() => console.log('[RainEffect] Mounted'));
+      api.onUnmount(() => { stop(); drops = []; });
+      api.onPause(() => { isPaused = true; stop(); });
+      api.onResume(() => { isPaused = false; start(); });
 
       window.addEventListener('resize', resize);
 
-      // ==========================================================================
-      // INITIALIZATION
-      // ==========================================================================
+      // ---- Boot ----
 
       function init() {
         const rect = canvas.getBoundingClientRect();
@@ -352,7 +256,6 @@
         });
 
         api.renderComplete();
-        console.log('[RainEffect] Ready');
       }
 
       if (document.readyState === 'complete') {
