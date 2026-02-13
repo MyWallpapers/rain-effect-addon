@@ -1,15 +1,30 @@
 {
   "name": "Rain Effect",
-  "version": "2.0.0",
+  "version": "3.1.0",
   "sdkVersion": "2.17.1",
+  "renderMode": "native",
+  "entry": "index.js",
   "description": "Beautiful rain effect with realistic droplets and customizable settings",
   "author": "MyWallpaper Team",
   "license": "MIT",
-  "keywords": ["rain", "weather", "effect", "ambient", "relaxing"],
-  "categories": ["effects", "weather", "ambient"],
+  "keywords": [
+    "rain",
+    "weather",
+    "effect",
+    "ambient",
+    "relaxing"
+  ],
+  "categories": [
+    "effects",
+    "weather",
+    "ambient"
+  ],
   "capabilities": {
     "hotReload": true,
-    "systemEvents": ["viewport:resize", "theme:change"]
+    "systemEvents": [
+      "viewport:resize",
+      "theme:change"
+    ]
   },
   "settings": {
     "rainSection": {
