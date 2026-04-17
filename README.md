@@ -1,6 +1,6 @@
 # Rain Effect Addon
 
-A beautiful, customizable rain effect addon for [MyWallpaper](https://github.com/rayandu924/MyWallpaper). Features realistic raindrops with parallax depth, splash effects, and extensive customization options.
+A beautiful, customizable rain effect addon for [MyWallpaper](https://github.com/MyWallpapers/MyWallpaper). Features realistic raindrops with parallax depth, splash effects, and extensive customization options.
 
 ## Features
 
