@@ -1,6 +1,21 @@
-import { jsx as de } from "react/jsx-runtime";
-import { useRef as ce, useState as ge, useEffect as me } from "react";
-import { useSettings as we, useViewport as ye } from "@mywallpaper/sdk-react";
+const __MYWALLPAPER_WIDGET_RUNTIME_CONTRACT__ = "1";
+if (!__canvasRuntime) {
+      throw new Error('Canvas runtime globals are unavailable');
+    }
+if (!__canvasRuntime.react || !__canvasRuntime.reactJsxRuntime || !__canvasRuntime.sdkReact || !__canvasRuntime.sdkContracts || !__canvasRuntime.sdkPermissions) {
+      throw new Error('Canvas runtime globals are unavailable');
+    }
+const __canvasRuntimeReact = __canvasRuntime.react;
+const __canvasRuntimeJsxRuntime = __canvasRuntime.reactJsxRuntime;
+const __canvasRuntimeSdk = __canvasRuntime.sdkReact;
+const __canvasRuntimeSdkContracts = __canvasRuntime.sdkContracts;
+const __canvasRuntimeSdkPermissions = __canvasRuntime.sdkPermissions;
+const de = __canvasRuntimeJsxRuntime.jsx;
+const ce = __canvasRuntimeReact.useRef;
+const ge = __canvasRuntimeReact.useState;
+const me = __canvasRuntimeReact.useEffect;
+const we = __canvasRuntimeSdk.useSettings;
+const ye = __canvasRuntimeSdk.useViewport;
 const o = {
   rainColor: "#a8c8e8",
   rainIntensity: 200,
@@ -51,7 +66,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   p[i] = d;
 }
 `
-), he = (
+), ve = (
   /* wgsl */
   `
 ${D}
@@ -87,7 +102,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   p[i] = d;
 }
 `
-), ve = (
+), he = (
   /* wgsl */
   `
 ${D}
@@ -142,20 +157,20 @@ function Pe() {
       b("WebGPU not supported");
       return;
     }
-    let h = !0, v = 0, e = null, B = null;
+    let v = !0, h = 0, e = null, B = null;
     return b(""), (async () => {
       const k = await navigator.gpu.requestAdapter();
-      if (!h) return;
+      if (!v) return;
       if (!k) {
         b("No GPU adapter");
         return;
       }
-      if (e = await k.requestDevice(), !h) {
+      if (e = await k.requestDevice(), !v) {
         e.destroy();
         return;
       }
       e.lost.then((i) => {
-        h && b(`GPU device lost: ${i.message}`);
+        v && b(`GPU device lost: ${i.message}`);
       });
       const Y = Math.min(devicePixelRatio || 1, 2);
       x.width = c * Y, x.height = f * Y;
@@ -171,8 +186,8 @@ function Pe() {
         compute: { module: e.createShaderModule({ code: be }), entryPoint: "main" }
       }), H = e.createComputePipeline({
         layout: "auto",
-        compute: { module: e.createShaderModule({ code: he }), entryPoint: "main" }
-      }), J = e.createShaderModule({ code: ve }), F = e.createRenderPipeline({
+        compute: { module: e.createShaderModule({ code: ve }), entryPoint: "main" }
+      }), J = e.createShaderModule({ code: he }), F = e.createRenderPipeline({
         layout: "auto",
         vertex: { module: J, entryPoint: "vs" },
         fragment: {
@@ -233,10 +248,10 @@ function Pe() {
       };
       let R = performance.now(), E = 0, T = !1;
       B = () => {
-        document.hidden ? (T = !0, cancelAnimationFrame(v)) : (T = !1, R = performance.now(), v = requestAnimationFrame(M));
+        document.hidden ? (T = !0, cancelAnimationFrame(h)) : (T = !1, R = performance.now(), h = requestAnimationFrame(M));
       };
       const M = (i) => {
-        if (!h || T) return;
+        if (!v || T) return;
         const a = Math.min(i - R, 50) * 0.06;
         R = i, E++;
         const t = P.current, n = t.rainIntensity;
@@ -258,11 +273,11 @@ function Pe() {
             clearValue: { r: 0, g: 0, b: 0, a: 0 }
           }]
         });
-        y.setPipeline(F), t.enableGlow && (y.setBindGroup(0, ie), y.draw(6, n)), y.setBindGroup(0, re), y.draw(6, n), y.end(), e.queue.submit([w.finish()]), v = requestAnimationFrame(M);
+        y.setPipeline(F), t.enableGlow && (y.setBindGroup(0, ie), y.draw(6, n)), y.setBindGroup(0, re), y.draw(6, n), y.end(), e.queue.submit([w.finish()]), h = requestAnimationFrame(M);
       };
-      document.addEventListener("visibilitychange", B), v = requestAnimationFrame(M);
+      document.addEventListener("visibilitychange", B), h = requestAnimationFrame(M);
     })(), () => {
-      h = !1, cancelAnimationFrame(v), B && document.removeEventListener("visibilitychange", B), e == null || e.destroy();
+      v = !1, cancelAnimationFrame(h), B && document.removeEventListener("visibilitychange", B), e?.destroy();
     };
   }, [c, f]), z ? /* @__PURE__ */ de("div", { style: { color: "#ff6b6b", fontFamily: "monospace", padding: 16 }, children: z }) : /* @__PURE__ */ de(
     "canvas",

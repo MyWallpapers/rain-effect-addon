@@ -1,6 +1,6 @@
 {
   "name": "Rain Effect",
-  "version": "3.2.2",
+  "version": "3.2.3",
   "entry": "index.js",
   "description": "Beautiful rain effect with realistic droplets and customizable settings",
   "author": "MyWallpaper Team",
